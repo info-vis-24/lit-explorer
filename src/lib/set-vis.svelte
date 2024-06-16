@@ -21,6 +21,7 @@
   class Center extends PositionObject {}
   const bibNodes: BibNode[] = []
   let selectedSets = new Set<BibSet>()
+  let attribute = 'category' as 'category' | 'name'
 
   const getActiveBibNodes = () => {
     return bibNodes.filter((node) =>
@@ -35,6 +36,10 @@
   }
 
   onMount(() => {
+    start()
+  })
+
+  const start = () => {
     const width = 1600
     const height = 750
     const game = new Game(gameDiv).setOptions({
@@ -51,19 +56,30 @@
       fillStyle: 'black',
     }).activate(game)
 
-    const categories = new Set<string>()
-    allBibEntries.forEach((entry) => {
-      parseCategories(entry).forEach((category) => {
-        categories.add(category)
-      })
-    })
+    const attributes = new Set<string>()
+    switch (attribute) {
+      case 'category':
+        allBibEntries.forEach((entry) => {
+          parseCategories(entry).forEach((category) => {
+            attributes.add(category)
+          })
+        })
+        break
+      case 'name':
+        allBibEntries.forEach((entry) => {
+          if (entry.fields.name) {
+            attributes.add(entry.fields.name)
+          }
+        })
+        break
+    }
 
     let target = new Vec2(0, 0)
-    const bibSets = [...categories].map((category) => {
+    const bibSets = [...attributes].map((attribute) => {
       target = target
         .plus(new Vec2(200 * Math.max(1, Math.sign(target.x)), 0))
         .multiply(-1)
-      return new BibSet(0, 0, category, target).activate(game)
+      return new BibSet(0, 0, attribute, target).activate(game)
     })
     const connections: [BibNode, BibNode][] = []
     let hoverSet: BibSet | null = null
@@ -90,17 +106,33 @@
 
     allBibEntries.forEach((entry) => {
       let prevNode: BibNode | null = null
-      parseCategories(entry).forEach((category) => {
-        const bibSet = bibSets.find((b) => b.title == category)
-        if (bibSet) {
-          const node = new BibNode(0, 0, entry.key, bibSet).activate(game)
-          bibNodes.push(node)
-          if (prevNode) {
-            connections.push([prevNode, node])
+
+      switch (attribute) {
+        case 'category':
+          parseCategories(entry).forEach((category) => {
+            const bibSet = bibSets.find((b) => b.title == category)
+            if (bibSet) {
+              const node = new BibNode(0, 0, entry.key, bibSet).activate(game)
+              bibNodes.push(node)
+              if (prevNode) {
+                connections.push([prevNode, node])
+              }
+              prevNode = node
+            }
+          })
+          break
+        case 'name':
+          const bibSet = bibSets.find((b) => b.title == entry.fields.name)
+          if (bibSet) {
+            const node = new BibNode(0, 0, entry.key, bibSet).activate(game)
+            bibNodes.push(node)
+            if (prevNode) {
+              connections.push([prevNode, node])
+            }
+            prevNode = node
           }
-          prevNode = node
-        }
-      })
+          break
+      }
     })
 
     game.beforeDraw = (ctx) => {
@@ -178,23 +210,38 @@
     }
 
     game.play()
-  })
+  }
 </script>
 
 <div>
-  {#if selectedSets.size}
-    <div class="relative">
+  <div class="relative">
+    <div class="absolute right-0 transform translate-y-[-45px]">
       <Button
-        class="absolute right-0 transform translate-y-[-45px]"
         variant="outline"
         on:click={() => {
-          selectedSets.clear()
-          setVisFilter.set(new Set())
-          selectedSets = selectedSets
-        }}>Clear</Button
+          switch (attribute) {
+            case 'category':
+              attribute = 'name'
+              break
+            case 'name':
+              attribute = 'category'
+              break
+          }
+          start()
+        }}>Attribute</Button
       >
+      {#if selectedSets.size}
+        <Button
+          variant="outline"
+          on:click={() => {
+            selectedSets.clear()
+            setVisFilter.set(new Set())
+            selectedSets = selectedSets
+          }}>Clear</Button
+        >
+      {/if}
     </div>
-  {/if}
+  </div>
 
   <div class="flex rounded-md border overflow-hidden">
     <div bind:this={gameDiv}></div>
