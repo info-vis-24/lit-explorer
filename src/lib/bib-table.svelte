@@ -25,7 +25,6 @@
   import BibTableActions from './bib-table-actions.svelte'
   import BibTableImg from './bib-table-img.svelte'
   import { Button } from './components/ui/button'
-  import ScrollArea from './components/ui/scroll-area/scroll-area.svelte'
 
   export let bibEntries: Readable<Entry[]>
   let unwrappedBibEntries: Entry[] = []
@@ -201,63 +200,68 @@
     </div>
 
     <Tabs.Content value="table">
-      <ScrollArea class="h-[90svh] rounded-md border">
-        <Table.Root {...$tableAttrs}>
-          <Table.Header>
-            {#each $headerRows as headerRow}
-              <Subscribe rowAttrs={headerRow.attrs()}>
-                <Table.Row>
-                  {#each headerRow.cells as cell (cell.id)}
-                    <Subscribe
-                      attrs={cell.attrs()}
-                      let:attrs
-                      props={cell.props()}
-                      let:props
-                    >
-                      <Table.Head {...attrs}>
-                        {#if ['Author', 'Title', 'Date', 'Name', 'Categories'].includes(cell.id)}
-                          <Button variant="ghost" on:click={props.sort.toggle}>
+      <div class="h-[90svh] overflow-auto rounded-md border">
+        <div>
+          <Table.Root {...$tableAttrs}>
+            <Table.Header>
+              {#each $headerRows as headerRow}
+                <Subscribe rowAttrs={headerRow.attrs()}>
+                  <Table.Row>
+                    {#each headerRow.cells as cell (cell.id)}
+                      <Subscribe
+                        attrs={cell.attrs()}
+                        let:attrs
+                        props={cell.props()}
+                        let:props
+                      >
+                        <Table.Head {...attrs}>
+                          {#if ['Author', 'Title', 'Date', 'Name', 'Categories'].includes(cell.id)}
+                            <Button
+                              variant="ghost"
+                              on:click={props.sort.toggle}
+                            >
+                              <Render of={cell.render()} />
+                              <ArrowUpDown class={'ml-2 h-4 w-4'} />
+                            </Button>
+                          {:else}
                             <Render of={cell.render()} />
-                            <ArrowUpDown class={'ml-2 h-4 w-4'} />
-                          </Button>
-                        {:else}
-                          <Render of={cell.render()} />
-                        {/if}
-                      </Table.Head>
-                    </Subscribe>
-                  {/each}
-                </Table.Row>
-              </Subscribe>
-            {/each}
-          </Table.Header>
-          <Table.Body {...$tableBodyAttrs}>
-            {#each $pageRows as row (row.id)}
-              <Subscribe rowAttrs={row.attrs()} let:rowAttrs>
-                <Table.Row
-                  {...rowAttrs}
-                  on:click={() => {
-                    hoverEntry = unwrappedBibEntries.at(parseInt(row.id))
-                  }}
-                >
-                  {#each row.cells as cell (cell.id)}
-                    <Subscribe attrs={cell.attrs()} let:attrs>
-                      <Table.Cell {...attrs}>
-                        {#if ['Image', 'Title'].includes(cell.id)}
-                          <Dialog.Trigger>
+                          {/if}
+                        </Table.Head>
+                      </Subscribe>
+                    {/each}
+                  </Table.Row>
+                </Subscribe>
+              {/each}
+            </Table.Header>
+            <Table.Body {...$tableBodyAttrs}>
+              {#each $pageRows as row (row.id)}
+                <Subscribe rowAttrs={row.attrs()} let:rowAttrs>
+                  <Table.Row
+                    {...rowAttrs}
+                    on:click={() => {
+                      hoverEntry = unwrappedBibEntries.at(parseInt(row.id))
+                    }}
+                  >
+                    {#each row.cells as cell (cell.id)}
+                      <Subscribe attrs={cell.attrs()} let:attrs>
+                        <Table.Cell {...attrs}>
+                          {#if ['Image', 'Title'].includes(cell.id)}
+                            <Dialog.Trigger>
+                              <Render of={cell.render()} />
+                            </Dialog.Trigger>
+                          {:else}
                             <Render of={cell.render()} />
-                          </Dialog.Trigger>
-                        {:else}
-                          <Render of={cell.render()} />
-                        {/if}
-                      </Table.Cell>
-                    </Subscribe>
-                  {/each}
-                </Table.Row>
-              </Subscribe>
-            {/each}
-          </Table.Body>
-        </Table.Root>
-      </ScrollArea>
+                          {/if}
+                        </Table.Cell>
+                      </Subscribe>
+                    {/each}
+                  </Table.Row>
+                </Subscribe>
+              {/each}
+            </Table.Body>
+          </Table.Root>
+        </div>
+      </div>
     </Tabs.Content>
 
     <Tabs.Content value="image-grid">
@@ -278,7 +282,7 @@
     </Tabs.Content>
 
     {#if hoverEntry}
-      <Dialog.Content class="max-w-[800px]">
+      <Dialog.Content class="max-w-[80svw] max-h-[90svh]">
         <Dialog.Header>
           <Dialog.Title>{hoverEntry.fields.title}</Dialog.Title>
           <Dialog.Description
@@ -287,38 +291,58 @@
             )}</Dialog.Description
           >
         </Dialog.Header>
-        <div class="prose min-w-[100%] max-h-[600px] overflow-auto">
-          <BibTableImg
-            bibKey={hoverEntry.key}
-            className="rounded-md border"
-            width="800px"
-            dir="raw"
-          ></BibTableImg>
-          <p>{hoverEntry.fields.date ?? ''}</p>
-          <p>
-            {hoverEntry.fields.abstract ?? ''}
-          </p>
-          <p>
-            {parseCategories(hoverEntry).join(', ')}
-          </p>
+
+        <div class="flex gap-3 items-start">
+          <div class="flex-1 prose max-h-[80svh] overflow-auto">
+            <p>
+              {parseCategories(hoverEntry).join(', ')}, {hoverEntry.fields
+                .date ?? ''}
+            </p>
+            <p>
+              {hoverEntry.fields.abstract ?? ''}
+            </p>
+            <details>
+              <summary>
+                <h4>BibTex</h4>
+              </summary>
+              <pre
+                style="white-space: pre; overflow-x: hidden;">{hoverEntry.input}</pre>
+            </details>
+          </div>
+
+          <div class="flex-1 max-h-[80svh] flex flex-col justify-between gap-3">
+            <div class="overflow-auto">
+              <BibTableImg
+                bibKey={hoverEntry.key}
+                className="rounded-md border"
+                width=""
+                dir="raw"
+              ></BibTableImg>
+            </div>
+
+            <div class="flex justify-end gap-3">
+              <Button
+                on:click={() => {
+                  if (!hoverEntry?.fields.doi?.length) return
+                  window.location.href = `https://doi.org/${hoverEntry.fields.doi}`
+                }}
+              >
+                Visit Page
+              </Button>
+              <Button
+                on:click={() => {
+                  if (!hoverEntry) return
+                  navigator.clipboard.writeText(hoverEntry.input)
+                  toast.success('BibTex has been copied', {
+                    description: hoverEntry.fields.title,
+                  })
+                }}
+              >
+                Copy BibTex
+              </Button>
+            </div>
+          </div>
         </div>
-        <Dialog.Footer>
-          <Button
-            on:click={() => {
-              if (!hoverEntry?.fields.doi?.length) return
-              window.location.href = `https://doi.org/${hoverEntry.fields.doi}`
-            }}>Visit Page</Button
-          >
-          <Button
-            on:click={() => {
-              if (!hoverEntry) return
-              navigator.clipboard.writeText(hoverEntry.input)
-              toast.success('BibTex has been copied', {
-                description: hoverEntry.fields.title,
-              })
-            }}>Copy BibTex</Button
-          >
-        </Dialog.Footer>
       </Dialog.Content>
     {/if}
   </Dialog.Root>

@@ -74,12 +74,14 @@
         break
     }
 
-    let target = new Vec2(0, 0)
-    const bibSets = [...attributes].map((attribute) => {
-      target = target
-        .plus(new Vec2(200 * Math.max(1, Math.sign(target.x)), 0))
-        .multiply(-1)
-      return new BibSet(0, 0, attribute, target).activate(game)
+    const bibSets = [...attributes].map((category) => {
+      const start = new Vec2(
+        (Math.random() - 0.5) * width,
+        (Math.random() - 0.5) * height
+      )
+      return new BibSet(start.x, start.y, category, new Vec2(0, 0)).activate(
+        game
+      )
     })
     const connections: [BibNode, BibNode][] = []
     let hoverSet: BibSet | null = null
@@ -112,7 +114,12 @@
           parseCategories(entry).forEach((category) => {
             const bibSet = bibSets.find((b) => b.title == category)
             if (bibSet) {
-              const node = new BibNode(0, 0, entry.key, bibSet).activate(game)
+              const node = new BibNode(
+                bibSet.pos.x,
+                bibSet.pos.y,
+                entry.key,
+                bibSet
+              ).activate(game)
               bibNodes.push(node)
               if (prevNode) {
                 connections.push([prevNode, node])
@@ -124,7 +131,12 @@
         case 'name':
           const bibSet = bibSets.find((b) => b.title == entry.fields.name)
           if (bibSet) {
-            const node = new BibNode(0, 0, entry.key, bibSet).activate(game)
+            const node = new BibNode(
+              bibSet.pos.x,
+              bibSet.pos.y,
+              entry.key,
+              bibSet
+            ).activate(game)
             bibNodes.push(node)
             if (prevNode) {
               connections.push([prevNode, node])
@@ -137,6 +149,7 @@
 
     game.beforeDraw = (ctx) => {
       ctx.canvas.drawRect(new Vec2(-1000, -1000), new Vec2(2000, 2000))
+      const stepSize = 1 / Math.exp(ctx.t / 50)
 
       connections.forEach(([a, b]) => {
         ctx.canvas.drawLine(a.pos, b.pos, {}, { strokeStyle: lineColor })
@@ -146,6 +159,12 @@
         )
         b.speed = b.speed.plus(
           a.pos.minus(b.pos).multiply(Math.pow(l / 4000, 2))
+        )
+        a.bibSet.speed = a.bibSet.speed.plus(
+          b.pos.minus(a.pos).multiply(Math.pow(l / 1000, 2) * stepSize)
+        )
+        b.bibSet.speed = b.bibSet.speed.plus(
+          a.pos.minus(b.pos).multiply(Math.pow(l / 1000, 2) * stepSize)
         )
       })
     }
@@ -208,6 +227,11 @@
         })
       })
     }
+
+    // for (let i = 0; i < 60 * 5; i++) {
+    //   // @ts-ignore
+    //   game.__step()
+    // }
 
     game.play()
   }
